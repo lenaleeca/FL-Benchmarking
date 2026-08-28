@@ -2,6 +2,9 @@
 
 Comparing federated, centralised, and local learning across multisite clinical prediction tasks
 
+## Project Structure
+
+```text
 CHOIR_ModelOps/
 │
 ├── config/
@@ -46,3 +49,4 @@ CHOIR_ModelOps/
 ├── requirements.txt
 ├── README.md
 └── main.py
+```
