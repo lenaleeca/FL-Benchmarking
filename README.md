@@ -59,8 +59,8 @@ References to FedAvg, FedAvgM, FedProx, XGBoost, or other methods in file names 
 FL-Benchmarking/
 │
 ├── combined_analysis/
-│   ├── plot_fidelity_recovery_by_site_size_...
-│   ├── plot_fidelity_recovery_transportability_...
+│   ├── plot_fidelity_recovery_by_site_size_combined
+│   ├── plot_fidelity_recovery_transportability_combined
 │   └── summarize_total_training_time_combined
 │
 ├── condition_specific_analysis/
