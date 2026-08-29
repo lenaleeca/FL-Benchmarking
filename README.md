@@ -185,6 +185,7 @@ The full journal citation and DOI will be added after publication.
 For questions regarding the benchmark analysis code, please contact:
 
 **Na Li, PhD**  
-Department of Community Health Sciences, Cumming School of Medicine, University of Calgary  
-Centre for Health Informatics, University of Calgary  
+Department of Community Health Sciences
+Cumming School of Medicine
+University of Calgary  
 Email: [Na.Li@ucalgary.ca](mailto:Na.Li@ucalgary.ca)
