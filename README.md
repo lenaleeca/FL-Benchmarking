@@ -170,7 +170,7 @@ The benchmark analysis scripts used to generate the tables, figures, and statist
 
 ## Citation
 
-If you use or refer to this analysis code, please cite both the associated manuscript and the archived repository release.
+If you use or refer to this analysis code, please cite both the associated manuscript.
 
 ### Manuscript
 
