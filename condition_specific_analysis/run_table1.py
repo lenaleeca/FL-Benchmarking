@@ -33,9 +33,6 @@ from functions.common.build_characteristic_table import build_table1, save_table
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# -----------------------------
-# Find all site csv files
-# -----------------------------
 csv_files = sorted(INPUT_DIR.glob("site_*.csv"))
 
 print(f"Found {len(csv_files)} files:")
@@ -59,9 +56,6 @@ vars_for_table1 = [
     "labs_blood_lactate_max"
 ]
 
-# -----------------------------
-# Loop through each site file
-# -----------------------------
 for csv_file in csv_files:
     print("\n----------------------------------")
     print(f"Processing: {csv_file.name}")
@@ -69,22 +63,16 @@ for csv_file in csv_files:
     df = pd.read_csv(csv_file)
     print("Shape:", df.shape)
 
-    # Keep only selected vars
     df_use = df[vars_for_table1].copy()
 
-
-    # Build Table 1
     table1 = build_table1(
         df_use,
         label_col=0
     )
 
-    # Output names
     site_name = csv_file.stem
     out_docx = OUTPUT_DIR / f"{site_name}_table1.docx"
     
-
-
     save_table1_to_word(
         table1,
         str(out_docx),
