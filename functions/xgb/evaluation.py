@@ -1,5 +1,3 @@
-# xgb_posthoc_primary/evaluation.py
-
 from pathlib import Path
 
 import numpy as np
@@ -7,6 +5,35 @@ import numpy as np
 from functions.xgb.prepare_input import prepare_xgb_input
 from functions.common.metrics import compute_binary_prob_metrics
 
+def build_prediction_output_path(
+    *,
+    output_dir,
+    site_id,
+    model_type,
+    dataset_name,
+    best_round=None,
+):
+    """
+    Create a standardized CSV path for the prediction output.
+
+    Examples
+    --------
+    site_1_local_predictions.csv
+    site_1_central_predictions.csv
+    site_1_fl_site_round_57_predictions.csv
+    site_1_local_male_predictions.csv
+    site_1_fl_site_age_65_79_round_57_predictions.csv
+    """
+    output_dir = Path(output_dir)
+
+    pred_name = f"site_{site_id}_{model_type}_{dataset_name}"
+
+    if best_round is not None:
+        pred_name += f"_round_{best_round}"
+
+    pred_name += "_predictions.csv"
+
+    return output_dir / pred_name
 
 def xgb_model_predict(
     *,
@@ -17,7 +44,7 @@ def xgb_model_predict(
     threshold=0.5,
 ):
     """
-    Apply an XGBoost Booster to an already-prepared DMatrix.
+    Apply an XGBoost model to an already-prepared DMatrix.
 
     Returns
     -------
@@ -55,64 +82,7 @@ def evaluate_model_on_csv(
     verbose=True,
 ):
     """
-    Apply one XGBoost model to one CSV file and save predictions.
-
-    This function is used by both:
-        1. regular held-out evaluation
-        2. stratified held-out evaluation
-
-    Parameters
-    ----------
-    booster:
-        Loaded xgboost.Booster object.
-
-    model_path:
-        Path to the model file. Used as metadata in the output metrics.
-
-    csv_path:
-        Path to the held-out CSV file.
-
-    site_id:
-        Site identifier, for example 1, 2, 3, 4.
-
-    model_type:
-        Model label, for example:
-            - "local"
-            - "central"
-            - "fl_site"
-
-    dataset_name:
-        Dataset label, for example:
-            - "regular"
-            - "male"
-            - "female"
-            - "age_18_44"
-            - "age_45_64"
-            - "age_65_79"
-            - "age_ge_80"
-
-    output_dir:
-        Directory where prediction CSVs will be saved.
-
-    best_round:
-        Common selected FL best round.
-        Use None for central and independently trained local models.
-
-    scale:
-        Whether to scale predictors inside prepare_xgb_input().
-        Usually False because the held-out CSVs are already scaled.
-
-    drop_cols:
-        Columns to drop before making the XGBoost DMatrix.
-        True means drop ["row_id"] if present.
-
-    verbose:
-        Print progress messages.
-
-    Returns
-    -------
-    dict
-        Metrics dictionary with metadata columns added.
+    Apply an XGBoost model to one CSV file and save predictions.
     """
     csv_path = Path(csv_path)
     output_dir = Path(output_dir)
@@ -160,34 +130,3 @@ def evaluate_model_on_csv(
         print(f"  pred : {pred_out_path}")
 
     return metrics
-
-
-def build_prediction_output_path(
-    *,
-    output_dir,
-    site_id,
-    model_type,
-    dataset_name,
-    best_round=None,
-):
-    """
-    Create a standardized prediction CSV path.
-
-    Examples
-    --------
-    site_1_local_predictions.csv
-    site_1_central_predictions.csv
-    site_1_fl_site_round_57_predictions.csv
-    site_1_local_male_predictions.csv
-    site_1_fl_site_age_65_79_round_57_predictions.csv
-    """
-    output_dir = Path(output_dir)
-
-    pred_name = f"site_{site_id}_{model_type}_{dataset_name}"
-
-    if best_round is not None:
-        pred_name += f"_round_{best_round}"
-
-    pred_name += "_predictions.csv"
-
-    return output_dir / pred_name

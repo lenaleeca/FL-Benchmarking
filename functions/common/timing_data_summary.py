@@ -1,14 +1,8 @@
-"""Timing and data-transfer summary helpers for FL post-hoc reports.
-
-Branching rule
---------------
+"""
+Timing and data-transfer summary helpers for FL post-hoc reports.
 - algorithm_name == "xgb_hist_agg" uses XGB Hist Agg extraction.
 - any other algorithm_name uses non-XGB-Hist-Agg extraction.
 
-Outputs
--------
-- <algorithm_name>_timing_data_summary_long.csv for audit/debugging
-- <algorithm_name>_fl_training_report_table.csv for the manuscript/report table
 """
 
 from pathlib import Path
@@ -245,12 +239,7 @@ def _make_row(
 
 
 def _calc_mean_sd(values):
-    """Return raw mean and sample SD for numeric values.
-
-    The raw values are kept for audit output. Display formatting is handled
-    separately so that very small non-zero SDs are not shown as 0.000 in the
-    Word/report table.
-    """
+    """Return raw mean and sample SD for numeric values."""
     vals = pd.to_numeric(pd.Series(values), errors="coerce").dropna()
     if vals.empty:
         return None, None, vals
@@ -260,12 +249,7 @@ def _calc_mean_sd(values):
 
 
 def _format_small_nonzero_sd(sd_val, *, digits=3):
-    """Format SD for manuscript table display.
-
-    If the raw SD is non-zero but would round to 0.000, report it as
-    <0.001 instead of 0.000. This keeps the table consistent with a trend
-    arrow when tiny but real changes occur across rounds.
-    """
+    """Format SD for manuscript table display."""
     if sd_val is None or pd.isna(sd_val):
         return ""
     sd_val = float(sd_val)
@@ -286,11 +270,7 @@ def _format_mean_sd(values, *, digits=3):
 
 
 def _format_trend_arrow(round_nums, vals, *, atol=1e-9):
-    """Return an arrow for overall per-round transfer trend.
-
-    Uses a simple least-squares slope of transfer volume versus round number.
-    Returns an empty string when values are effectively unchanged.
-    """
+    """Return an arrow for overall per-round transfer trend."""
     x = pd.to_numeric(round_nums, errors="coerce")
     y = pd.to_numeric(vals, errors="coerce")
     trend_df = pd.DataFrame({"x": x, "y": y}).dropna()

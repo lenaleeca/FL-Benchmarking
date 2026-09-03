@@ -7,9 +7,19 @@ from functions.common.metrics import compute_binary_prob_metrics
 
 
 @torch.no_grad()
+
+def build_prediction_output_path(*, output_dir, site_id, model_type, dataset_name, best_round=None):
+    output_dir = Path(output_dir)
+    pred_name = f"site_{site_id}_{model_type}_{dataset_name}"
+    if best_round is not None:
+        pred_name += f"_round_{best_round}"
+    pred_name += "_predictions.csv"
+    return output_dir / pred_name
+
+
 def mlp_model_predict(*, model, df_raw, X, y_true, device="cpu", threshold=0.5):
     """
-    Apply a PyTorch MLP model to an already-prepared numpy feature matrix.
+    Apply a PyTorch MLP model to a processed numpy feature matrix.
     """
     model.eval()
     Xt = torch.tensor(X, dtype=torch.float32, device=device)
@@ -45,9 +55,6 @@ def evaluate_model_on_csv(
     """
     Apply one loaded MLP model to one CSV file and save predictions.
 
-    Flow:
-        CSV -> numpy X/y -> torch logits -> sigmoid probabilities
-        -> binary metrics -> prediction CSV
     """
     csv_path = Path(csv_path)
     output_dir = Path(output_dir)
@@ -100,12 +107,3 @@ def evaluate_model_on_csv(
         print(f"  pred : {pred_out_path}")
 
     return metrics
-
-
-def build_prediction_output_path(*, output_dir, site_id, model_type, dataset_name, best_round=None):
-    output_dir = Path(output_dir)
-    pred_name = f"site_{site_id}_{model_type}_{dataset_name}"
-    if best_round is not None:
-        pred_name += f"_round_{best_round}"
-    pred_name += "_predictions.csv"
-    return output_dir / pred_name

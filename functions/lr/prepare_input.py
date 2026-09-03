@@ -5,7 +5,7 @@ from functions.mlp.prepare_input import (
     prepare_mlp_input,
 )
 
-
+# LR use same tabular input structure and preprocessing as MLP
 def prepare_lr_input(csv_path, *, expected_n_features=None, label_col=None, scale=False, drop_cols=True):
     return prepare_mlp_input(
         csv_path,

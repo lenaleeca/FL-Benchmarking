@@ -25,8 +25,7 @@ def _is_stratified_partition_file(path, stratum):
 
 def find_test_partition_file_in_site_result_dir(site_dir):
     """
-    Find the single primary held-out test partition file in one explicit
-    site result folder.
+    Find the held-out test partition file in site result folder.
 
     """
     site_dir = Path(site_dir)

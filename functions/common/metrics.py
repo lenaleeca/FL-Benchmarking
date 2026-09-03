@@ -1,3 +1,18 @@
+"""
+Compute binary classification metrics from predicted probabilities.
+
+Reporting rules:
+    1. If both classes are present:
+       - estimate AUC, AUPRC, and 95% CIs.
+       - if n < sparse_n_threshold, flag as sparse.
+
+    2. If only one outcome class is present (e.g., in stratified subgroups with small n):
+       - AUC and AUPRC are not estimable.
+       - return NaN for AUC/AUPRC and their CIs.
+
+Brier score and log loss are calculated in all non-empty datasets.
+"""
+
 from typing import Dict
 import numpy as np
 from sklearn.metrics import (
@@ -18,21 +33,7 @@ def compute_binary_prob_metrics(
     random_state: int = 1111,
     sparse_n_threshold: int = 20,
 ) -> Dict[str, float]:
-    """
-    Compute binary classification metrics from predicted probabilities.
-
-    Reporting rules:
-        1. If both classes are present:
-           - estimate AUC, AUPRC, and 95% CIs.
-           - if n < sparse_n_threshold, flag as sparse.
-
-        2. If only one outcome class is present:
-           - AUC and AUPRC are not estimable.
-           - return NaN for AUC/AUPRC and their CIs.
-
-    Brier score and log loss are calculated in all non-empty datasets.
-    Log loss uses labels=[0, 1] so sklearn does not crash in one-class strata.
-    """
+    
     yt = np.asarray(y_true).astype(int).reshape(-1)
     p = np.asarray(y_prob).astype(float).reshape(-1)
 
@@ -109,8 +110,8 @@ def compute_binary_prob_metrics(
         neg_idx = np.where(yt == 0)[0]
 
         for _ in range(n_boot):
-            boot_pos = rng.choice(pos_idx, size=len(pos_idx), replace=True)
-            boot_neg = rng.choice(neg_idx, size=len(neg_idx), replace=True)
+            boot_pos = rng.choice(pos_idx, size=len(pos_idx), replace=True) #  Bootstrap sampling of positive indices
+            boot_neg = rng.choice(neg_idx, size=len(neg_idx), replace=True) #  Bootstrap sampling of negative indices
             boot_idx = np.concatenate([boot_pos, boot_neg])
 
             yt_b = yt[boot_idx]

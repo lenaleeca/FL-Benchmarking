@@ -11,11 +11,8 @@ def _is_test_partition_file(path):
 
 def find_test_partition_file_in_site_result_dir(site_dir):
     """
-    Find one primary held-out test partition file under an explicit site result folder.
+    Find one held-out test partition file under a site result folder.
 
-    Supports both:
-        run_folder/partitions/test_partition_scaled.csv
-        run_folder/results/partitions/test_partition_scaled.csv
     """
     site_dir = Path(site_dir)
     if not site_dir.is_dir():
@@ -67,7 +64,7 @@ def prepare_mlp_input(csv_path, *, expected_n_features=None, label_col=None, sca
     Prepare held-out CSV for PyTorch MLP inference.
 
     If label_col is provided, y=df[label_col] and X=remaining columns.
-    If label_col is None, the first column after drop_cols is the outcome.
+    If label_col is None, assume the first column after drop_cols is the outcome.
     """
     csv_path = Path(csv_path)
 

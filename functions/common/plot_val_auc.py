@@ -8,17 +8,11 @@ report.
 """
 
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, Tuple
 import math
 
 import matplotlib.pyplot as plt
 import pandas as pd
 from docx.shared import Inches
-
-
-# =============================================================================
-# Defaults
-# =============================================================================
 
 DEFAULT_FIGSIZE = (7, 2.8)
 DEFAULT_DPI = 300
@@ -36,25 +30,6 @@ DEFAULT_PALETTE = [
     "#F0E442",
     "#000000",
 ]
-
-
-# =============================================================================
-# Helpers
-# =============================================================================
-
-def _metric_entry_path_and_site_id(entry):
-    if not isinstance(entry, dict):
-        raise TypeError(
-            "metrics_files must contain entries like "
-            "{'site_id': 1, 'path': '...metrics.csv'}."
-        )
-
-    if "site_id" not in entry or "path" not in entry:
-        raise KeyError(
-            "Each metrics_files entry must contain 'site_id' and 'path'."
-        )
-
-    return Path(entry["path"]), entry["site_id"]
 
 
 def _lookup_site_value(mapping, site_id):
@@ -89,44 +64,25 @@ def _read_validation_auc(path):
 
     df = pd.read_csv(path)
 
-    required_cols = {
-        "round",
-        "dataset",
-        "metric",
-        "value",
-    }
+    required = {"round", "dataset", "metric", "value"}
+    missing = required - set(df.columns)
 
-    if not required_cols.issubset(df.columns):
+    if missing:
         raise ValueError(
-            f"Metrics CSV has incorrect columns: {path}\n"
-            f"Expected at least: {sorted(required_cols)}"
+            f"{path} is missing required columns: {sorted(missing)}"
         )
-
+        
     sub = df[
         df["dataset"].astype(str).str.lower().eq("val")
         & df["metric"].astype(str).str.lower().eq("auc")
     ][["round", "value"]].copy()
 
-    sub["round"] = pd.to_numeric(
-        sub["round"],
-        errors="coerce",
-    )
-
-    sub["value"] = pd.to_numeric(
-        sub["value"],
-        errors="coerce",
-    )
-
-    sub = (
-        sub
-        .dropna()
-        .sort_values("round")
-    )
+    sub["round"] = pd.to_numeric(sub["round"], errors="coerce")
+    sub["value"] = pd.to_numeric(sub["value"], errors="coerce")
+    sub = sub.dropna().sort_values("round")
 
     if sub.empty:
-        raise ValueError(
-            f"No validation AUC rows found in: {path}"
-        )
+        raise ValueError(f"No validation AUC rows found in: {path}")
 
     sub["round"] = sub["round"].astype(int)
 
@@ -157,19 +113,8 @@ def _auto_legend_ncol(
     if n_items <= 0:
         return 1
 
-    return max(
-        1,
-        int(
-            math.ceil(
-                n_items / max(1, int(max_legend_rows))
-            )
-        ),
-    )
+    return max(1, math.ceil(n_items / max(1, max_legend_rows)))
 
-
-# =============================================================================
-# Plot
-# =============================================================================
 
 def plot_val_auc(
     doc,
@@ -222,32 +167,6 @@ def plot_val_auc(
     right_margin=0.98,
     top_margin=0.95,
 ):
-    """
-    Create a validation AUC figure, save it as PNG/PDF, and add it to Word.
-
-    Parameters
-    ----------
-    metrics_files:
-        Site-level metrics files. Each entry must contain site_id and path.
-
-    out_plot_path:
-        Base output path for the figure. The same filename stem is used for
-        each requested output format.
-
-    best_round:
-        Optional common selected FL round shown as a vertical dashed line.
-
-    best_round_by_site:
-        Optional site-specific selected FL rounds shown using diamond markers.
-
-    site_sample_sizes:
-        Optional site sample sizes displayed in the legend.
-
-    Returns
-    -------
-    list[Path]
-        Paths to the saved plot files.
-    """
 
     out_plot_path = Path(out_plot_path)
     out_plot_path.parent.mkdir(
@@ -258,9 +177,7 @@ def plot_val_auc(
     if best_round is not None:
         best_round = int(best_round)
 
-    fig, ax = plt.subplots(
-        figsize=figsize
-    )
+    fig, ax = plt.subplots(figsize=figsize)
 
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
@@ -269,34 +186,16 @@ def plot_val_auc(
     all_rounds = []
     plotted_any = False
 
-    # -------------------------------------------------------------------------
-    # Site trajectories
-    # -------------------------------------------------------------------------
-
-    for i, entry in enumerate(metrics_files or []):
-        metrics_path, site_id = (
-            _metric_entry_path_and_site_id(entry)
-        )
+    for i, (site_id, metrics_path) in enumerate((metrics_files or {}).items()):
+        metrics_path = Path(metrics_path)
 
         if not metrics_path.exists():
-            print(
-                f"Skipping missing metrics file: "
-                f"{metrics_path}"
-            )
+            print(f"Skipping missing metrics file: {metrics_path}")
             continue
 
-        sub = _read_validation_auc(
-            metrics_path
-        )
-
-        color = palette[
-            i % len(palette)
-        ]
-
-        n_site = _lookup_site_value(
-            site_sample_sizes,
-            site_id,
-        )
+        sub = _read_validation_auc(metrics_path)
+        color = palette[i % len(palette)]
+        n_site = _lookup_site_value(site_sample_sizes, site_id)
 
         if n_site is not None:
             legend_label = (
@@ -315,9 +214,6 @@ def plot_val_auc(
             zorder=3,
         )
 
-        # ---------------------------------------------------------------------
-        # Site-specific selected round
-        # ---------------------------------------------------------------------
 
         selected_round = _lookup_site_value(
             best_round_by_site,
@@ -325,19 +221,13 @@ def plot_val_auc(
         )
 
         if selected_round is not None:
-            selected_round = int(
-                selected_round
-            )
-
-            selected = sub[
-                sub["round"] == selected_round
-            ]
+            selected_round = int(selected_round)
+            selected = sub[sub["round"] == selected_round]
 
             if selected.empty:
                 print(
-                    f"Warning: selected round "
-                    f"{selected_round} for Site {site_id} "
-                    f"was not found in {metrics_path}."
+                    f"Warning: selected round {selected_round} "
+                    f"for Site {site_id} was not found."
                 )
             else:
                 selected_auc = float(
@@ -355,28 +245,12 @@ def plot_val_auc(
                     zorder=9,
                 )
 
-        all_values.extend(
-            sub["value"]
-            .astype(float)
-            .tolist()
-        )
-
-        all_rounds.extend(
-            sub["round"]
-            .astype(int)
-            .tolist()
-        )
+        all_values.extend(sub["value"].astype(float))
+        all_rounds.extend(sub["round"].astype(int))
 
         plotted_any = True
 
-    # -------------------------------------------------------------------------
-    # Handle no valid data
-    # -------------------------------------------------------------------------
-
-    doc.add_heading(
-        heading,
-        level=2,
-    )
+    doc.add_heading(heading, level=2)
 
     if not plotted_any:
         doc.add_paragraph(
@@ -385,9 +259,6 @@ def plot_val_auc(
         plt.close(fig)
         return []
 
-    # -------------------------------------------------------------------------
-    # Common selected round
-    # -------------------------------------------------------------------------
 
     if best_round is not None:
         ax.axvline(
@@ -402,37 +273,18 @@ def plot_val_auc(
             ),
             zorder=6,
         )
+        all_rounds.append(best_round)
 
-        all_rounds.append(
-            best_round
-        )
-
-    # -------------------------------------------------------------------------
     # X axis
-    # -------------------------------------------------------------------------
-
-    min_round = int(
-        min(all_rounds)
-    )
-
-    max_round = int(
-        max(all_rounds)
-    )
-
-    if (
-        x_tick_interval is None
-        or x_tick_interval <= 0
-    ):
-        x_tick_interval = (
-            _auto_x_tick_interval(
-                min_round,
-                max_round,
-            )
+    min_round = min(all_rounds)
+    max_round = max(all_rounds)
+    if not x_tick_interval or x_tick_interval <= 0:
+        x_tick_interval = _auto_x_tick_interval(
+            min_round,
+            max_round,
         )
 
-    x_tick_interval = int(
-        x_tick_interval
-    )
+    x_tick_interval = int(x_tick_interval)
 
     start_tick = (
         min_round // x_tick_interval
@@ -446,9 +298,7 @@ def plot_val_auc(
         )
     )
 
-    xticks.extend(
-        [min_round, max_round]
-    )
+    xticks.extend([min_round, max_round])
 
     x_pad = (
         0.5
@@ -459,75 +309,35 @@ def plot_val_auc(
         )
     )
 
-    ax.set_xticks(
-        sorted(
-            set(
-                int(x)
-                for x in xticks
-            )
-        )
-    )
-
+    ax.set_xticks(sorted(set(xticks)))
     ax.set_xlim(
         min_round - x_pad,
         max_round + x_pad,
     )
 
-    # -------------------------------------------------------------------------
     # Y axis
-    # -------------------------------------------------------------------------
-
-    observed_min = min(
-        all_values
-    )
-
-    observed_max = max(
-        all_values
-    )
-
+    observed_min = min(all_values)
+    observed_max = max(all_values)
     y_pad = (
         0.02
         if observed_min == observed_max
-        else (
-            observed_max - observed_min
-        ) * y_pad_ratio
+        else (observed_max - observed_min) * y_pad_ratio
     )
-
-    automatic_lower = max(
-        0,
-        observed_min - y_pad,
-    )
-
-    automatic_upper = min(
-        1,
-        observed_max + y_pad,
-    )
-
+    
     y_lower = (
-        automatic_lower
+        max(0, observed_min - y_pad)
         if y_axis_min is None
         else float(y_axis_min)
     )
 
     y_upper = (
-        automatic_upper
+        min(1, observed_max + y_pad)
         if y_axis_max is None
         else float(y_axis_max)
     )
 
-    ax.set_ylim(
-        y_lower,
-        y_upper,
-    )
-
-    # -------------------------------------------------------------------------
-    # Labels
-    # -------------------------------------------------------------------------
-
-    ax.set_xlabel(
-        x_label,
-        fontsize=axis_label_fontsize,
-    )
+    ax.set_ylim(y_lower, y_upper)
+    ax.set_xlabel(x_label, fontsize=axis_label_fontsize)
 
     ax.set_ylabel(
         y_label,
@@ -547,30 +357,19 @@ def plot_val_auc(
             alpha=0.2,
         )
 
-    # -------------------------------------------------------------------------
-    # Legend
-    # -------------------------------------------------------------------------
-
-    handles, labels = (
-        ax.get_legend_handles_labels()
-    )
+    handles, labels = ax.get_legend_handles_labels()
 
     if legend_ncol is None:
-        legend_ncol = (
-            _auto_legend_ncol(
-                len(labels),
-                max_legend_rows,
-            )
+        legend_ncol = _auto_legend_ncol(
+            len(labels),
+            max_legend_rows,
         )
 
     legend = fig.legend(
         handles,
         labels,
         loc="lower center",
-        bbox_to_anchor=(
-            0.55,
-            legend_bottom_y,
-        ),
+        bbox_to_anchor=(0.55, legend_bottom_y),
         ncol=legend_ncol,
         frameon=False,
         fontsize=legend_fontsize,
@@ -582,10 +381,6 @@ def plot_val_auc(
 
     legend.set_zorder(1000)
 
-    # -------------------------------------------------------------------------
-    # Margins
-    # -------------------------------------------------------------------------
-
     fig.subplots_adjust(
         left=left_margin,
         right=right_margin,
@@ -593,48 +388,24 @@ def plot_val_auc(
         top=top_margin,
     )
 
-    # -------------------------------------------------------------------------
-    # Save all requested formats
-    # -------------------------------------------------------------------------
-
     saved_paths = []
-
     base_path = out_plot_path.with_suffix("")
 
     for fmt in formats:
         fmt = str(fmt).lower().lstrip(".")
+        save_path = base_path.with_suffix(f".{fmt}")
+        save_kwargs = {"facecolor": "white"}
 
-        save_path = base_path.with_suffix(
-            f".{fmt}"
-        )
-
-        save_kwargs = {
-            "facecolor": "white",
-        }
-
-        if fmt in {
-            "png",
-            "jpg",
-            "jpeg",
-            "tif",
-            "tiff",
-        }:
+        if fmt in {"png", "jpg", "jpeg", "tif", "tiff"}:
             save_kwargs["dpi"] = dpi
 
         fig.savefig(
             save_path,
             **save_kwargs,
         )
-
-        saved_paths.append(
-            save_path
-        )
+        saved_paths.append(save_path)
 
     plt.close(fig)
-
-    # -------------------------------------------------------------------------
-    # Add PNG to Word
-    # -------------------------------------------------------------------------
 
     png_path = next(
         (

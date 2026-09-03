@@ -15,11 +15,6 @@ def _load_xgb_model(model_path):
     return booster
 
 
-# ==================================================
-# General round-specific model loader
-# Used for FL GLOBAL/LOCAL round snapshots
-# ==================================================
-
 def _find_xgb_model(folder, *, kind, round_num=None):
     """
     Find one XGBoost round-specific model.
@@ -103,14 +98,12 @@ def _load_model_info(folder, *, kind, round_num=None, loaded_from=None):
     }
 
 
-# ==================================================
 # BEST model loader
 # Used for central and independently trained local XGB models
-# ==================================================
 
 def _find_xgb_best_model(folder):
     """
-    Find one saved XGB BEST model file.
+    Find one saved XGB *_BEST_round*.json model file.
 
     This is used for central and independently trained local XGB models.
 
@@ -119,8 +112,6 @@ def _find_xgb_best_model(folder):
         site-aa68-01_xgb_hist_agg_BEST_round_57.json
         something_LOCAL_BEST_round.json
 
-    The important part is:
-        *_BEST_round*.json
     """
     folder = _as_results_dir(folder)
 
@@ -253,10 +244,6 @@ def _load_best_model_info(folder, *, kind="BEST", loaded_from=None):
     }
 
 
-# ==================================================
-# Mapping helper
-# ==================================================
-
 def _get_mapping_value(mapping, site_id, mapping_name):
     for key in (site_id, str(site_id)):
         if key in mapping:
@@ -271,10 +258,6 @@ def _get_mapping_value(mapping, site_id, mapping_name):
 
     raise KeyError(f"No entry for site {site_id} in {mapping_name}.")
 
-
-# ==================================================
-# Public loaders
-# ==================================================
 
 def load_central_xgb(central_results_dir):
     """
@@ -336,7 +319,7 @@ def load_fl_xgb(server_results_dir, best_round):
     result folder.
 
     Expected example:
-        something_GLOBAL_round_57.json
+        _GLOBAL_round_57.json
     """
     return _load_model_info(
         server_results_dir,
@@ -358,10 +341,8 @@ def load_fl_local_xgb_by_site_best_rounds(
         2. load that site's FL LOCAL model at that round
 
     Expected example:
-        something_LOCAL_round_57.json
+        _LOCAL_round_57.json
 
-    This is separate from *_BEST_round*.json because FL secondary analysis
-    evaluates each site's communication-round LOCAL snapshot.
     """
     if fl_site_results_dirs is None:
         raise ValueError("fl_site_results_dirs is required.")

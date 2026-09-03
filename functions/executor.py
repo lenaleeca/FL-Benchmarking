@@ -41,7 +41,7 @@ from sklearn import metrics
 
 from functions.common.get_common_best_round import (
     get_common_best_round,
-    find_metric_entries_from_site_result_dirs,
+    find_metric_file,
 )
 from functions.common.paired_comparisons import run_paired_comparison_analysis
 from functions.common.path_config import (
@@ -503,7 +503,7 @@ def run_analysis(
     else:
         best_round = int(best_round)
         round_summary_df = pd.DataFrame()
-        metrics_files = find_metric_entries_from_site_result_dirs(
+        metrics_files = find_metric_file(
             fl_site_results_dirs=fl_site_results_dirs,
             verbose=verbose,
         )

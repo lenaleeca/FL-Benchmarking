@@ -240,11 +240,7 @@ def run_leave_site_out_analysis(
     output_dir,
     verbose=True,
 ):
-    """
-    Run leave-site-out post-hoc analysis.
 
-    Supports numeric or letter site IDs.
-    """
     primary_fl_site_results_dirs = normalize_site_path_map(
         primary_fl_site_results_dirs,
         name="primary_fl_site_results_dirs",

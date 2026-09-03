@@ -71,13 +71,8 @@ def get_path_for_site(path_map, site_id, *, name):
 
 def site_dir_from_root_or_map(results_root_dir, site_id, path_map=None):
     """
-    Return an FL site folder.
+    Return an FL site result folder.
 
-    Direct path map takes priority.
-
-    If path_map is not provided, fallback assumes folders like:
-        fl_site_1
-        fl_site_A
     """
     if path_map is not None:
         return get_path_for_site(path_map, site_id, name="fl_site_results_dirs")

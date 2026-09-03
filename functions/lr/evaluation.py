@@ -7,6 +7,15 @@ from functions.common.metrics import compute_binary_prob_metrics
 
 
 @torch.no_grad()
+def build_prediction_output_path(*, output_dir, site_id, model_type, dataset_name, best_round=None):
+    output_dir = Path(output_dir)
+    pred_name = f"site_{site_id}_{model_type}_{dataset_name}"
+    if best_round is not None:
+        pred_name += f"_round_{best_round}"
+    pred_name += "_predictions.csv"
+    return output_dir / pred_name
+
+
 def lr_model_predict(*, model, df_raw, X, y_true, device="cpu", threshold=0.5):
     model.eval()
     Xt = torch.tensor(X, dtype=torch.float32, device=device)
@@ -87,12 +96,3 @@ def evaluate_model_on_csv(
         print(f"  pred : {pred_out_path}")
 
     return metrics
-
-
-def build_prediction_output_path(*, output_dir, site_id, model_type, dataset_name, best_round=None):
-    output_dir = Path(output_dir)
-    pred_name = f"site_{site_id}_{model_type}_{dataset_name}"
-    if best_round is not None:
-        pred_name += f"_round_{best_round}"
-    pred_name += "_predictions.csv"
-    return output_dir / pred_name

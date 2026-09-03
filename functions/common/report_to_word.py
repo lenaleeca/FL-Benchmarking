@@ -254,27 +254,21 @@ def _format_best_round_summary_for_word(
     ]
 
 # Cross-site summary helpers
-def _format_mean_sd(
-    mean_val,
-    sd_val,
+def _format_median_range(
+    median,
+    minimum,
+    maximum,
     float_fmt="{:.3f}",
 ):
-    """Format a cross-site mean and SD as 'mean (SD)'."""
-    if pd.isna(mean_val):
+    """Format a median and range as 'median (min, max)'."""
+    if pd.isna(median):
         return ""
 
-    mean_text = float_fmt.format(
-        float(mean_val)
-    )
-
-    if pd.isna(sd_val):
-        return mean_text
-
     return (
-        f"{mean_text} "
-        f"({float_fmt.format(float(sd_val))})"
+        f"{float_fmt.format(float(median))} "
+        f"({float_fmt.format(float(minimum))}, "
+        f"{float_fmt.format(float(maximum))})"
     )
-
 
 def _summarise_metrics_across_sites(
     results_df,
@@ -285,9 +279,7 @@ def _summarise_metrics_across_sites(
     metric_specs=None,
     float_fmt="{:.3f}",
 ):
-    """
-    Summarise site-level held-out metrics as mean (SD) across sites.
-    """
+    """Summarise site-level performance as median (range) across sites."""
     metric_specs = metric_specs or [
         ("auc", "AUC"),
         ("brier", "Brier"),
@@ -300,64 +292,35 @@ def _summarise_metrics_across_sites(
         "Source": source,
     }
 
-    if results_df is None or results_df.empty:
-        for _, label in metric_specs:
-            row[
-                f"{label}, mean (SD)"
-            ] = ""
-
-        row["n sites"] = ""
-        return row
-
-    df = results_df.copy()
-
-    if "site_id" in df.columns:
-        n_sites = (
-            df["site_id"]
-            .dropna()
-            .nunique()
-        )
-    else:
-        n_sites = len(df)
-
     for metric, label in metric_specs:
-        output_col = (
-            f"{label}, mean (SD)"
-        )
+        output_col = f"{label}, median (range)"
 
-        if metric not in df.columns:
+        if results_df is None or results_df.empty or metric not in results_df.columns:
             row[output_col] = ""
             continue
 
-        values = (
-            pd.to_numeric(
-                df[metric],
-                errors="coerce",
-            )
-            .dropna()
-        )
+        values = pd.to_numeric(
+            results_df[metric],
+            errors="coerce",
+        ).dropna()
 
         if values.empty:
             row[output_col] = ""
             continue
 
-        mean_value = values.mean()
-
-        sd_value = (
-            values.std(ddof=1)
-            if len(values) > 1
-            else np.nan
+        row[output_col] = _format_median_range(
+            values.median(),
+            values.min(),
+            values.max(),
+            float_fmt=float_fmt,
         )
 
-        row[output_col] = (
-            _format_mean_sd(
-                mean_value,
-                sd_value,
-                float_fmt=float_fmt,
-            )
-        )
-
-    row["n sites"] = int(n_sites)
+    if results_df is None or results_df.empty:
+        row["n sites"] = ""
+    elif "site_id" in results_df.columns:
+        row["n sites"] = int(results_df["site_id"].dropna().nunique())
+    else:
+        row["n sites"] = len(results_df)
 
     return row
 
@@ -389,7 +352,7 @@ def _format_pooled_metric_row_for_word(
     if results_df is None or results_df.empty:
         for _, label in metric_specs:
             row[
-                f"{label}, mean (SD)"
+                f"{label}, median (range)"
             ] = ""
 
         row["n sites"] = ""
@@ -399,7 +362,7 @@ def _format_pooled_metric_row_for_word(
 
     for metric, label in metric_specs:
         output_col = (
-            f"{label}, mean (SD)"
+            f"{label}, median (range)"
         )
 
         if metric not in df.columns:
@@ -437,12 +400,7 @@ def _format_cross_site_summary_for_word(
     include_blank_central_row=True,
     float_fmt="{:.3f}",
 ):
-    """
-    Build the primary cross-site summary table.
-
-    Local and FL rows are mean (SD) across sites. Centralised is populated
-    from pooled held-out results when provided.
-    """
+    
     rows = []
 
     rows.append(
@@ -499,9 +457,9 @@ def _format_cross_site_summary_for_word(
             "Training strategy",
             "FL algorithm",
             "Source",
-            "AUC, mean (SD)",
-            "Brier, mean (SD)",
-            "AUPRC, mean (SD)",
+            "AUC, median (range)",
+            "Brier, median (range)",
+            "AUPRC, median (range)",
             "n sites",
         ]
     ]
@@ -1802,7 +1760,7 @@ def save_analysis_report_to_word(
             )
 
             doc.add_paragraph(
-                "Values for Local and FL are mean (SD) across "
+                "Values for Local and FL are median (range) across "
                 "site-specific held-out performance estimates. "
                 "The Centralised row is populated only when pooled "
                 "central-model performance is provided by the run script."
@@ -1848,9 +1806,7 @@ def save_analysis_report_to_word(
         doc.add_paragraph(
             "Differences were calculated using predictions from the same "
             "held-out patients with paired stratified bootstrap 95% "
-            "confidence intervals. Positive AUC differences favour the "
-            "first strategy listed in each comparison, whereas negative "
-            "Brier-score differences favour the first strategy."
+            "confidence intervals."
         )
 
         paired_word_df = (
@@ -2017,10 +1973,7 @@ def save_analysis_report_to_word(
         doc.add_paragraph(
             "Shared models were compared with the site's independently "
             "trained local model under within-network and leave-site-out "
-            "settings. Values closer to zero indicate performance more "
-            "similar to the local reference model. Positive AUC differences "
-            "favour the shared model, whereas negative Brier-score "
-            "differences favour the shared model."
+            "settings."
         )
 
         fidelity_word_df = (
@@ -2109,7 +2062,7 @@ def save_analysis_report_to_word(
                 )
 
                 doc.add_paragraph(
-                    "Values are mean (SD) across site-specific held-out "
+                    "Values are median (range) across site-specific held-out "
                     "performance estimates. The FL row uses each site's "
                     "own selected best round."
                 )
