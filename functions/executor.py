@@ -17,12 +17,12 @@ The pipeline requires paths to:
 - Independently trained local model results (FedEMRai output).
 - Optional raw site-level CSV files for stratified analysis.
 - Optional leave-site-out FL and centralised result directories (FedEMRai output).
-- Optional pooled central-model performance values (FedEMRai output).
-
+-
 Outputs
 -------
 A timestamped analysis folder is created under ``output_root_dir`` containing:
 - Primary held-out performance metrics and prediction CSV files.
+- Pooled centralised test performance metrics and predictions.
 - Secondary analysis outputs, when enabled.
 - Paired within-site differences in AUC and Brier score with 95% confidence
   intervals.
@@ -347,6 +347,45 @@ def evaluate_heldout_all_sites(
     return pd.DataFrame(rows)
 
 
+
+def evaluate_central_pooled_test(
+    *, model_family, prepare_input_module, evaluation_module,
+    central_results_dir, central_model, output_dir,
+    label_col=None, verbose=True,
+):
+    """Evaluate the centralised model once on its existing pooled test partition."""
+    pooled_csv = prepare_input_module.get_test_partition_csv(central_results_dir)
+    if verbose:
+        print(f"\nEvaluating centralised model on pooled test partition: {pooled_csv}")
+
+    metrics = _evaluate_one_model(
+        model_family=model_family,
+        evaluator=evaluation_module,
+        model_info=central_model,
+        csv_path=pooled_csv,
+        site_id="pooled",
+        model_type="central",
+        dataset_name="pooled_test",
+        output_dir=output_dir,
+        label_col=label_col,
+        verbose=verbose,
+    )
+    metrics["model_round"] = central_model.get("model_round")
+    metrics["best_round"] = central_model.get("best_round", metrics.get("best_round", pd.NA))
+    metrics["best_epoch"] = central_model.get("best_epoch", pd.NA)
+    metrics["best_iteration"] = central_model.get("best_iteration", pd.NA)
+    metrics["model_kind"] = central_model.get("model_kind")
+    metrics["loaded_from"] = central_model.get("loaded_from", pd.NA)
+    metrics["loaded_best_model"] = central_model.get("loaded_best_model", False)
+
+    pooled_df = pd.DataFrame([metrics])
+    pooled_out = Path(output_dir) / "heldout_central_pooled_test_metrics.csv"
+    pooled_df.to_csv(pooled_out, index=False)
+    if verbose:
+        print(f"Pooled centralised test metrics saved to: {pooled_out}")
+    return pooled_df, pooled_out
+
+
 def split_results_by_model_type(results_df):
     return {
         "fl_site": results_df[results_df["model_type"] == "fl_site"].copy(),
@@ -428,8 +467,8 @@ def run_analysis(
     fl_site_results_dirs,
     server_results_dir,
     central_results_dir,
-    central_pooled_results_df=None,
     local_results_dirs,
+    central_pooled_results_df=None,  # Deprecated: computed from central test partition.
     best_round=None,
     results_root_dir=None,
     label_col=None,
@@ -551,6 +590,19 @@ def run_analysis(
                 f"best_epoch={model_info.get('best_epoch')}, "
                 f"best_iteration={model_info.get('best_iteration')})"
             )
+    # Evaluate the centralised model on the already-pooled central test set.
+    
+    central_pooled_results_df, central_pooled_metrics_out = evaluate_central_pooled_test(
+        model_family=model_family,
+        prepare_input_module=prepare_input_module,
+        evaluation_module=evaluation_module,
+        central_results_dir=central_results_dir,
+        central_model=central_model,
+        output_dir=output_dir,
+        label_col=label_col,
+        verbose=verbose,
+    )
+
     primary_results_df = evaluate_heldout_all_sites(
         model_family=model_family,
         prepare_input_module=prepare_input_module,
@@ -797,6 +849,8 @@ def run_analysis(
     "word_out_path": word_out_path,
 
     "primary_results_df": primary_results_df,
+    "central_pooled_results_df": central_pooled_results_df,
+    "central_pooled_metrics_out": central_pooled_metrics_out,
     "secondary_results_df": secondary_results_df,
 
     "paired_within_site_df": paired_within_site_df,

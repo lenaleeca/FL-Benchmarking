@@ -1762,8 +1762,8 @@ def save_analysis_report_to_word(
             doc.add_paragraph(
                 "Values for Local and FL are median (range) across "
                 "site-specific held-out performance estimates. "
-                "The Centralised row is populated only when pooled "
-                "central-model performance is provided by the run script."
+                "The Centralised row reports performance from applying "
+                "the centralised model to the pooled site-level held-out test partition."
             )
 
             cross_site_summary_df = (

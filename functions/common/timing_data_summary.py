@@ -1,5 +1,5 @@
 """
-Timing and data-transfer summary helpers for FL post-hoc reports.
+Timing and data-transfer summary helpers.
 - algorithm_name == "xgb_hist_agg" uses XGB Hist Agg extraction.
 - any other algorithm_name uses non-XGB-Hist-Agg extraction.
 
